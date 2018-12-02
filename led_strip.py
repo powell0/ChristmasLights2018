@@ -6,25 +6,29 @@ from neopixel import *
 from config import settings
 from config import colors
 
+def _clamp(n, smallest, largest): 
+    return max(smallest, min(n, largest))
+
 class LedStrip:
     def __init__(self, led_count = settings.LED_COUNT, pin = settings.LED_PIN, frequency = settings.LED_FREQ_HZ, dma = settings.LED_DMA, invert = settings.LED_INVERT, brightness = settings.LED_BRIGHTNESS, pwm_channel = settings.LED_PWM_CHANNEL, strip_type = settings.LED_STRIP_TYPE):
         # Create NeoPixel object with appropriate configuration.
         self.strip = Adafruit_NeoPixel(led_count, pin, frequency, dma, invert, brightness, pwm_channel, strip_type)
+        self.led_count = led_count
 
         # Intialize the library (must be called once before other functions).
         self.strip.begin()
 
-    def on(pos, color=colors.WHITE):
+    def on(self, pos, color=colors.WHITE):
         """Sets the given pixel to the provided color"""
-        pos = max(0, min(pos, self.strip.numPixels() - 1))
+        pos = _clamp(pos, 0, self.led_count - 1)
 
         self.strip.setPixelColor(pos, color)
 
         self.strip.show()
 
-    def off(pos):
+    def off(self, pos):
         """Turns the given pixel off"""
-        pos = max(0, min(pos, self.strip.numPixels() - 1))
+        pos = _clamp(pos, 0, self.led_count - 1)
 
         self.strip.setPixelColor(pos, colors.OFF)
 
@@ -34,7 +38,7 @@ class LedStrip:
         """
         Sets all pixels to the provided color.
         """
-        for i in range(self.strip.numPixels()):
+        for i in range(self.led_count):
             self.strip.setPixelColor(i, color)
 
         self.strip.show()
@@ -43,7 +47,7 @@ class LedStrip:
         """
         Turns off all the LEDS.
         """
-        for i in range(self.strip.numPixels()):
+        for i in range(self.led_count):
             self.strip.setPixelColor(i, colors.OFF)
 
         self.strip.show()
@@ -53,15 +57,12 @@ class LedStrip:
         Turn on the lights using the specified color pattern
         Can optionally specify a sub segment using the start and end positions
         """
-        led_count = self.strip.numPixels() - 1
+        last_led = self.led_count - 1
 
-        if endPos < 0 or endPos > led_count:
+        if endPos < 0 or endPos > last_led:
             endPos = led_count
 
-        if startPos < 0:
-            startPos = 0
-        elif startPos > led_count:
-            startPos = led_count
+        startPos = _clamp(startPos, 0, last_led)
 
         if startPos > endPos:
             startPos, endPos = endPos, startPos
@@ -69,8 +70,8 @@ class LedStrip:
         color_pattern_len = len(color_pattern)
 
         # set the lights to the color pattern given, repeating the colors as neccessary
-        for i in range(startPos, endPos + 1)
-            self.strip.setPixelColor(i, color_pattern[i % color_pattern_len])
+        for i in range(startPos, endPos + 1):
+            self.strip.setPixelColor(i, color_pattern[(i - startPos) % color_pattern_len])
 
         self.strip.show()
 
@@ -90,7 +91,7 @@ class LedStrip:
         
     def colorWipe(self, color, wait_ms=50):
         """Wipe color across display a pixel at a time."""
-        for i in range(self.strip.numPixels()):
+        for i in range(self.led_count):
             self.strip.setPixelColor(i, color)
 
             self.strip.show()
@@ -101,14 +102,14 @@ class LedStrip:
         """Movie theater light style chaser animation."""
         for j in range(iterations):
             for q in range(3):
-                for i in range(0, self.strip.numPixels(), 3):
+                for i in range(0, self.led_count, 3):
                     self.strip.setPixelColor(i+q, color)
 
                 self.strip.show()
 
                 time.sleep(wait_ms/1000.0)
 
-                for i in range(0, self.strip.numPixels(), 3):
+                for i in range(0, self.led_count, 3):
                     self.strip.setPixelColor(i+q, 0)
 
     def _wheel(self, pos):
@@ -125,7 +126,7 @@ class LedStrip:
     def rainbow(self, wait_ms=20, iterations=1):
         """Draw rainbow that fades across all pixels at once."""
         for j in range(256*iterations):
-            for i in range(self.strip.numPixels()):
+            for i in range(self.led_count):
                 pos = (i+j) & 255
                 self.strip.setPixelColor(i, self._wheel(pos))
 
@@ -136,7 +137,7 @@ class LedStrip:
     def rainbowCycle(self, wait_ms=20, iterations=5):
         """Draw rainbow that uniformly distributes itself across all pixels."""
         for j in range(256*iterations):
-            for i in range(self.strip.numPixels()):
+            for i in range(self.led_count):
                 pos = ((i * 256 / self.strip.numPixels()) + j) & 255
                 self.strip.setPixelColor(i, self._wheel(pos))
 
@@ -148,7 +149,7 @@ class LedStrip:
         """Rainbow movie theater light style chaser animation."""
         for j in range(256):
             for q in range(3):
-                for i in range(0, self.strip.numPixels(), 3):
+                for i in range(0, self.led_count, 3):
                     pos = (i+j) % 255
                     self.strip.setPixelColor(i+q, self._wheel(pos))
 
@@ -156,5 +157,5 @@ class LedStrip:
 
                 time.sleep(wait_ms/1000.0)
 
-                for i in range(0, self.strip.numPixels(), 3):
+                for i in range(0, self.led_count, 3):
                     self.strip.setPixelColor(i+q, 0)
