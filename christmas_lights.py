@@ -3,8 +3,10 @@ from config import *
 from led_strip import *
 import math
 from neopixel import Color
+import RPi.GPIO as GPIO
+import signal
+import sys
 import time
-
 
 # The wait time between led_strip rainbow updates, in ms
 # The best way to control how fast it goes is to use the CASCADE_CYCLE_SPEED_FACTOR setting
@@ -111,10 +113,49 @@ def display_rainbow_cascade(led_strip, mode):
 # Main program logic follows:
 if __name__ == '__main__':
 
+    print("Initializing Christmas Lights 2018...")
+
     # Create LedStrip object with default configuration (as defined in config/settings.py)
     led_strip = LedStrip()
 
     # Create the rainbow cascade
     create_rainbow_cascade()
 
-    display_rainbow_cascade(led_strip, settings.CASCADE_MODE)
+    # Initialize GPIO library
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(settings.MOTION_SENSOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.add_event_detect(settings.MOTION_SENSOR_PIN, GPIO.RISING, bouncetime=200)
+
+    # Initialize lights
+    if settings.BASE_COLOR in colors.COLOR_MAP:
+        led_strip.allOn(colors.COLOR_MAP.get(settings.BASE_COLOR))
+    else:
+        led_strip.allOff()
+
+    def handle_exit(sig, frame):
+        led_strip.allOff()
+        print('')
+        print('Christmas Lights 2018 finished')
+        sys.exit(0)
+
+    # handle the exit signal
+    signal.signal(signal.SIGINT, handle_exit)
+
+    print('Running Christmas Lights 2018 (Press Ctrl-C to quit)')
+    print('')
+
+    # Clear out any spurious signals before starting
+    GPIO.event_detected(settings.MOTION_SENSOR_PIN)
+
+    while True:
+        if GPIO.event_detected(settings.MOTION_SENSOR_PIN):
+            # Run the rainbows!
+            display_rainbow_cascade(led_strip, settings.CASCADE_MODE)
+
+            # sleep between detections
+            time.sleep(settings.DETECTION_QUIET_TIME)
+
+            # Clear out any detections that occurred during the quiet time
+            GPIO.event_detected(settings.MOTION_SENSOR_PIN)
+
